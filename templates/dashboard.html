@@ -2,10 +2,12 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
 <title>IoT Dashboard</title>
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<!-- 📊 CHART.JS -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <!-- 🔔 ONESIGNAL -->
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
@@ -85,14 +87,48 @@ body { margin:0; font-family:Arial; display:flex; }
   </div>
 </div>
 
+<!-- 📊 GRAPH -->
+<div style="margin-top:40px;">
+  <canvas id="myChart" height="120"></canvas>
 </div>
 
-<!-- 🔊 ALARM SOUND -->
+</div>
+
+<!-- 🔊 SOUND -->
 <audio id="alarmSound" src="https://www.soundjay.com/button/beep-07.wav"></audio>
 
-<!-- 🔥 REAL-TIME SCRIPT -->
+<!-- 🔥 SCRIPT -->
 <script>
 let fireTriggered = false;
+
+let labels = [];
+let tempData = [];
+let humData = [];
+
+const ctx = document.getElementById('myChart').getContext('2d');
+
+const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: labels,
+        datasets: [
+            {
+                label: 'Temperature',
+                data: tempData,
+                borderWidth: 2
+            },
+            {
+                label: 'Humidity',
+                data: humData,
+                borderWidth: 2
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        animation: false
+    }
+});
 
 async function getData() {
   let res = await fetch('/data');
@@ -102,20 +138,32 @@ async function getData() {
   document.getElementById("hum").innerText = d.humidity + "%";
   document.getElementById("fire").innerText = d.fire;
 
+  // GRAPH
+  let time = new Date().toLocaleTimeString();
+  labels.push(time);
+  tempData.push(d.temperature);
+  humData.push(d.humidity);
+
+  if (labels.length > 10) {
+    labels.shift();
+    tempData.shift();
+    humData.shift();
+  }
+
+  chart.update();
+
+  // FIRE ALERT
   if (d.fire === "FIRE" && !fireTriggered) {
 
-    // UI ALERT
     document.getElementById("alertBox").style.display = "block";
     document.getElementById("fireCard").style.background = "red";
     document.getElementById("fireCard").style.color = "white";
 
-    // 🔊 SOUND
     document.getElementById("alarmSound").play();
 
-    // 🔔 ONESIGNAL
     OneSignal.sendSelfNotification(
       "🔥 FIRE ALERT!",
-      "Fire detected in your system!",
+      "Fire detected!",
       window.location.href
     );
 
